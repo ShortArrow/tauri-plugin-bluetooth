@@ -12,6 +12,7 @@ export interface DeviceInfo {
   id: string
   name?: string | undefined
   services: string[]
+  rssi?: number | undefined
 }
 
 export interface RequestDeviceTauriOptions {

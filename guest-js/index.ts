@@ -30,8 +30,25 @@ export const requestDevice = async (
   if (isTauri()) {
     const info = await tauriInvoke<DeviceInfo>('request_device', { options })
     console.log(info)
+    return new BluetoothDevice(info.id, info.name)
   } else {
     const device = await navigator.bluetooth.requestDevice(options)
     console.log(device)
+    return new BluetoothDevice(device)
+  }
+}
+
+export const scanDevices = async (
+  options: RequestDeviceOptions & RequestDeviceTauriOptions,
+): Promise<DeviceInfo[]> => {
+  if (!(await getAvailability())) {
+    return []
+  }
+
+  if (isTauri()) {
+    const devices = await tauriInvoke<DeviceInfo[]>('scan_devices', { options })
+    return devices
+  } else {
+    throw new Error('scanDevices is only available in Tauri environment')
   }
 }

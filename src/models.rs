@@ -19,7 +19,9 @@ Typescript reference:
 ```typescript
 interface DeviceInfo {
   id: string
+  name?: string
   services: string[]
+  rssi?: number
 }
 ```
 */
@@ -27,5 +29,9 @@ interface DeviceInfo {
 #[serde(rename_all = "camelCase")]
 pub struct DeviceInfo {
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub services: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rssi: Option<i16>,
 }

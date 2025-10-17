@@ -39,6 +39,17 @@ pub(crate) async fn request_device<R: Runtime>(
     app.bluetooth_manager().request_device(options).await
 }
 
+#[command]
+pub(crate) async fn scan_devices<R: Runtime>(
+    app: AppHandle<R>,
+    options: RequestDeviceOptions,
+) -> Result<Vec<DeviceInfo>> {
+    if !options.accept_all_devices.unwrap_or(false) && options.filters.is_none() {
+        return Err(Error::InvalidRequestDeviceOptions);
+    }
+    app.bluetooth_manager().scan_devices(options).await
+}
+
 pub fn collect_handlers<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool {
-    tauri::generate_handler![ping, gatt_connect, gatt_connected, get_availability, request_device]
+    tauri::generate_handler![ping, gatt_connect, gatt_connected, get_availability, request_device, scan_devices]
 }

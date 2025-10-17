@@ -71,6 +71,47 @@ impl BluetoothManager {
         Ok(!self.manager.adapters().await?.is_empty())
     }
 
+    pub async fn scan_devices(&self, options: RequestDeviceOptions) -> Result<Vec<DeviceInfo>> {
+        let adapter = match self._get_adapter().await? {
+            Some(adapter) => adapter,
+            None => return Err(Error::NoAdapter),
+        };
+
+        adapter
+            .start_scan(ScanFilter::default())
+            .await
+            .map_err(|e| {
+                log::error!("Failed to start scan: {}", e);
+                Error::ScanStartFailure
+            })?;
+        tokio::time::sleep(Duration::from_millis(options.timeout.unwrap_or(5000))).await;
+        adapter.stop_scan().await.map_err(|e| {
+            log::error!("Failed to stop scan: {}", e);
+            Error::ScanStopFailure
+        })?;
+
+        let mut devices = Vec::new();
+        for peripheral in adapter.peripherals().await?.iter() {
+            if let Some(properties) = peripheral.properties().await? {
+                if utils::match_options(&properties, &options) {
+                    log::info!("Found {:#?}", properties);
+                    let device_id = self._cache_peripheral_and_get_id(peripheral).await;
+                    devices.push(DeviceInfo {
+                        id: device_id,
+                        name: properties.local_name.clone(),
+                        services: properties
+                            .services
+                            .iter()
+                            .map(|uuid| uuid.hyphenated().to_string())
+                            .collect(),
+                        rssi: properties.rssi,
+                    });
+                }
+            }
+        }
+        Ok(devices)
+    }
+
     pub async fn request_device(&self, options: RequestDeviceOptions) -> Result<DeviceInfo> {
         let adapter = match self._get_adapter().await? {
             Some(adapter) => adapter,
@@ -97,11 +138,13 @@ impl BluetoothManager {
                     let device_id = self._cache_peripheral_and_get_id(peripheral).await;
                     return Ok(DeviceInfo {
                         id: device_id,
+                        name: properties.local_name.clone(),
                         services: properties
                             .services
                             .iter()
                             .map(|uuid| uuid.hyphenated().to_string())
                             .collect(),
+                        rssi: properties.rssi,
                     });
                 }
             }
