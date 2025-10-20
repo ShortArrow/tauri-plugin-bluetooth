@@ -31,4 +31,17 @@ impl<R: Runtime> PluginBase<R> {
             .run_mobile_plugin("ping", payload)
             .map_err(Into::into)
     }
+
+    pub fn scan_devices(&self, options: serde_json::Value) -> crate::Result<Vec<crate::DeviceInfo>> {
+        #[derive(serde::Deserialize)]
+        struct ScanResponse {
+            devices: Vec<crate::DeviceInfo>,
+        }
+
+        let response: ScanResponse = self.0
+            .run_mobile_plugin("scanDevices", options)
+            .map_err(|e| crate::Error::PluginInvoke(e))?;
+
+        Ok(response.devices)
+    }
 }

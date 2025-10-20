@@ -52,8 +52,13 @@ fn _setup<R: Runtime>(
         let plugin_base = desktop::init(app, api)?;
         app.manage(plugin_base);
 
-        let bluetooth_manager = bluetooth::init().await?;
-        app.manage(bluetooth_manager);
+        // Only initialize BluetoothManager on desktop
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        {
+            let bluetooth_manager = bluetooth::init().await?;
+            app.manage(bluetooth_manager);
+        }
+
         Ok(())
     })
 }

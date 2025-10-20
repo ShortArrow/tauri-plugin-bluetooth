@@ -25,6 +25,8 @@ pub enum Error {
     #[cfg(mobile)]
     #[error(transparent)]
     PluginInvoke(#[from] tauri::plugin::mobile::PluginInvokeError),
+    #[error("{0}")]
+    Unknown(String),
 }
 
 impl Serialize for Error {

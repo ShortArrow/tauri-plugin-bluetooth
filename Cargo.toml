@@ -27,10 +27,14 @@ base64 = "0.22.1"
 btleplug = { version = "0.11.7", features = ["serde"] }
 log = "0.4.25"
 serde = "1.0"
+serde_json = "1.0"
 tauri = { version = "2.2.4" }
 thiserror = "2"
 tokio = "1.43.0"
 uuid = { version = "1.13.1", features = ["v4"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.19"
 
 [build-dependencies]
 tauri-plugin = { version = "2.0.3", features = ["build"] }

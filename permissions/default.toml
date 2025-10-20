@@ -4,4 +4,5 @@ permissions = [
     "allow-ping",
     "allow-get-availability",
     "allow-request-device",
+    "allow-scan-devices",
 ]
