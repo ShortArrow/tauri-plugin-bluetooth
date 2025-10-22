@@ -47,6 +47,8 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
     }
     private val scannedDevices = mutableListOf<ScanResult>()
     private val handler = Handler(Looper.getMainLooper())
+    private var continuousScanCallback: ScanCallback? = null
+    private val deviceMap = mutableMapOf<String, ScanResult>()
 
     @Command
     fun ping(invoke: Invoke) {
@@ -105,7 +107,17 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
                     device.put("id", result.device.address)
                     device.put("name", result.device.name ?: "Unknown")
                     device.put("rssi", result.rssi)
-                    device.put("services", JSArray())
+
+                    // iBeaconパケットからTx Powerを取得
+                    val txPower = result.scanRecord?.txPowerLevel ?: -59
+                    device.put("txPower", txPower)
+
+                    val services = JSArray()
+                    result.scanRecord?.serviceUuids?.forEach { uuid ->
+                        services.put(uuid.toString())
+                    }
+                    device.put("services", services)
+
                     devicesArray.put(device)
                 }
 
@@ -117,6 +129,84 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
             android.util.Log.e("ExamplePlugin", "Security exception during scan", e)
             invoke.reject("Permission denied: ${e.message}")
         }
+    }
+
+    @Command
+    fun startContinuousScan(invoke: Invoke) {
+        android.util.Log.i("ExamplePlugin", "startContinuousScan called")
+
+        if (!checkBluetoothPermissions()) {
+            requestBluetoothPermissions(invoke)
+            return
+        }
+
+        val scanner = bluetoothAdapter?.bluetoothLeScanner
+        if (scanner == null) {
+            invoke.reject("Bluetooth not available")
+            return
+        }
+
+        // 既にスキャン中の場合は停止
+        continuousScanCallback?.let { scanner.stopScan(it) }
+
+        deviceMap.clear()
+
+        val callback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
+                deviceMap[result.device.address] = result
+                android.util.Log.d("ExamplePlugin", "Continuous scan: ${result.device.name}, RSSI: ${result.rssi}")
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                super.onScanFailed(errorCode)
+                android.util.Log.e("ExamplePlugin", "Continuous scan failed: $errorCode")
+            }
+        }
+
+        try {
+            scanner.startScan(callback)
+            continuousScanCallback = callback
+            android.util.Log.i("ExamplePlugin", "Continuous scan started")
+            invoke.resolve()
+        } catch (e: SecurityException) {
+            invoke.reject("Permission denied: ${e.message}")
+        }
+    }
+
+    @Command
+    fun stopContinuousScan(invoke: Invoke) {
+        val scanner = bluetoothAdapter?.bluetoothLeScanner
+        continuousScanCallback?.let {
+            scanner?.stopScan(it)
+            continuousScanCallback = null
+            android.util.Log.i("ExamplePlugin", "Continuous scan stopped")
+        }
+        invoke.resolve()
+    }
+
+    @Command
+    fun getContinuousScanResults(invoke: Invoke) {
+        val devicesArray = JSArray()
+        deviceMap.values.forEach { result ->
+            val device = JSObject()
+            device.put("id", result.device.address)
+            device.put("name", result.device.name ?: "Unknown")
+            device.put("rssi", result.rssi)
+            device.put("txPower", result.scanRecord?.txPowerLevel ?: -59)
+
+            val services = JSArray()
+            result.scanRecord?.serviceUuids?.forEach { uuid ->
+                services.put(uuid.toString())
+            }
+            device.put("services", services)
+
+            devicesArray.put(device)
+        }
+
+        val ret = JSObject()
+        ret.put("devices", devicesArray)
+        invoke.resolve(ret)
     }
 
     private fun checkBluetoothPermissions(): Boolean {

@@ -75,6 +75,55 @@ pub(crate) async fn scan_devices<R: Runtime>(
     }
 }
 
+#[command]
+pub(crate) async fn start_continuous_scan<R: Runtime>(app: AppHandle<R>) -> Result<()> {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        app.plugin_base().start_continuous_scan()
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        Err(Error::Unknown("Continuous scan only available on mobile".to_string()))
+    }
+}
+
+#[command]
+pub(crate) async fn stop_continuous_scan<R: Runtime>(app: AppHandle<R>) -> Result<()> {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        app.plugin_base().stop_continuous_scan()
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        Ok(())
+    }
+}
+
+#[command]
+pub(crate) async fn get_continuous_scan_results<R: Runtime>(app: AppHandle<R>) -> Result<Vec<DeviceInfo>> {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        app.plugin_base().get_continuous_scan_results()
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        Ok(Vec::new())
+    }
+}
+
 pub fn collect_handlers<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool {
-    tauri::generate_handler![ping, gatt_connect, gatt_connected, get_availability, request_device, scan_devices]
+    tauri::generate_handler![
+        ping,
+        gatt_connect,
+        gatt_connected,
+        get_availability,
+        request_device,
+        scan_devices,
+        start_continuous_scan,
+        stop_continuous_scan,
+        get_continuous_scan_results
+    ]
 }

@@ -44,4 +44,29 @@ impl<R: Runtime> PluginBase<R> {
 
         Ok(response.devices)
     }
+
+    pub fn start_continuous_scan(&self) -> crate::Result<()> {
+        self.0
+            .run_mobile_plugin("startContinuousScan", ())
+            .map_err(|e| crate::Error::PluginInvoke(e))
+    }
+
+    pub fn stop_continuous_scan(&self) -> crate::Result<()> {
+        self.0
+            .run_mobile_plugin("stopContinuousScan", ())
+            .map_err(|e| crate::Error::PluginInvoke(e))
+    }
+
+    pub fn get_continuous_scan_results(&self) -> crate::Result<Vec<crate::DeviceInfo>> {
+        #[derive(serde::Deserialize)]
+        struct ScanResponse {
+            devices: Vec<crate::DeviceInfo>,
+        }
+
+        let response: ScanResponse = self.0
+            .run_mobile_plugin("getContinuousScanResults", ())
+            .map_err(|e| crate::Error::PluginInvoke(e))?;
+
+        Ok(response.devices)
+    }
 }

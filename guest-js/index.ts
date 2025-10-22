@@ -52,3 +52,23 @@ export const scanDevices = async (
     throw new Error('scanDevices is only available in Tauri environment')
   }
 }
+
+export const startContinuousScan = async (): Promise<void> => {
+  if (isTauri()) {
+    await tauriInvoke('start_continuous_scan')
+  }
+}
+
+export const stopContinuousScan = async (): Promise<void> => {
+  if (isTauri()) {
+    await tauriInvoke('stop_continuous_scan')
+  }
+}
+
+export const getContinuousScanResults = async (): Promise<DeviceInfo[]> => {
+  if (isTauri()) {
+    const devices = await tauriInvoke<DeviceInfo[]>('get_continuous_scan_results')
+    return devices
+  }
+  return []
+}

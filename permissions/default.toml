@@ -5,4 +5,7 @@ permissions = [
     "allow-get-availability",
     "allow-request-device",
     "allow-scan-devices",
+    "allow-start-continuous-scan",
+    "allow-stop-continuous-scan",
+    "allow-get-continuous-scan-results",
 ]
