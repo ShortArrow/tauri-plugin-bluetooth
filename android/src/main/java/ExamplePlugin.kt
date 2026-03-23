@@ -62,7 +62,7 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
     fun scanDevices(invoke: Invoke) {
         android.util.Log.i("ExamplePlugin", "scanDevices called")
 
-        // 権限チェック
+        // Check Bluetooth permissions
         if (!checkBluetoothPermissions()) {
             android.util.Log.w("ExamplePlugin", "Permissions not granted, requesting...")
             requestBluetoothPermissions(invoke)
@@ -108,7 +108,7 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
                     device.put("name", result.device.name ?: "Unknown")
                     device.put("rssi", result.rssi)
 
-                    // iBeaconパケットからTx Powerを取得
+                    // Get Tx Power from iBeacon packet
                     val txPower = result.scanRecord?.txPowerLevel ?: -59
                     device.put("txPower", txPower)
 
@@ -146,7 +146,7 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
             return
         }
 
-        // 既にスキャン中の場合は停止
+        // Stop existing scan if already scanning
         continuousScanCallback?.let { scanner.stopScan(it) }
 
         deviceMap.clear()
