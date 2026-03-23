@@ -40,6 +40,10 @@ class ScanOptions {
     ]
 )
 class ExamplePlugin(private val activity: Activity): Plugin(activity) {
+    companion object {
+        private const val UNKNOWN_TX_POWER_LEVEL = -59
+    }
+
     private val implementation = Example()
     private val bluetoothAdapter: BluetoothAdapter? by lazy {
         val bluetoothManager = activity.getSystemService(Activity.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -102,24 +106,7 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
                 android.util.Log.i("ExamplePlugin", "Scan stopped, found ${scannedDevices.size} devices")
 
                 val devicesArray = JSArray()
-                scannedDevices.forEach { result ->
-                    val device = JSObject()
-                    device.put("id", result.device.address)
-                    device.put("name", result.device.name ?: "Unknown")
-                    device.put("rssi", result.rssi)
-
-                    // Get Tx Power from iBeacon packet
-                    val txPower = result.scanRecord?.txPowerLevel ?: -59
-                    device.put("txPower", txPower)
-
-                    val services = JSArray()
-                    result.scanRecord?.serviceUuids?.forEach { uuid ->
-                        services.put(uuid.toString())
-                    }
-                    device.put("services", services)
-
-                    devicesArray.put(device)
-                }
+                scannedDevices.forEach { result -> devicesArray.put(buildDeviceObject(result)) }
 
                 val ret = JSObject()
                 ret.put("devices", devicesArray)
@@ -188,59 +175,43 @@ class ExamplePlugin(private val activity: Activity): Plugin(activity) {
     @Command
     fun getContinuousScanResults(invoke: Invoke) {
         val devicesArray = JSArray()
-        deviceMap.values.forEach { result ->
-            val device = JSObject()
-            device.put("id", result.device.address)
-            device.put("name", result.device.name ?: "Unknown")
-            device.put("rssi", result.rssi)
-            device.put("txPower", result.scanRecord?.txPowerLevel ?: -59)
-
-            val services = JSArray()
-            result.scanRecord?.serviceUuids?.forEach { uuid ->
-                services.put(uuid.toString())
-            }
-            device.put("services", services)
-
-            devicesArray.put(device)
-        }
+        deviceMap.values.forEach { result -> devicesArray.put(buildDeviceObject(result)) }
 
         val ret = JSObject()
         ret.put("devices", devicesArray)
         invoke.resolve(ret)
     }
 
-    private fun checkBluetoothPermissions(): Boolean {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            arrayOf(
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION
-            )
-        }
-
-        return permissions.all {
-            ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
+    private fun buildDeviceObject(result: ScanResult): JSObject {
+        val services = JSArray()
+        result.scanRecord?.serviceUuids?.forEach { uuid -> services.put(uuid.toString()) }
+        return JSObject().apply {
+            put("id", result.device.address)
+            put("name", result.device.name ?: "Unknown")
+            put("rssi", result.rssi)
+            put("txPower", result.scanRecord?.txPowerLevel ?: UNKNOWN_TX_POWER_LEVEL)
+            put("services", services)
         }
     }
 
-    private fun requestBluetoothPermissions(invoke: Invoke) {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    private fun getRequiredPermissions(): Array<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(
                 Manifest.permission.BLUETOOTH_SCAN,
                 Manifest.permission.BLUETOOTH_CONNECT,
                 Manifest.permission.ACCESS_FINE_LOCATION
             )
         } else {
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION
-            )
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
-        ActivityCompat.requestPermissions(activity, permissions, 1001)
+    private fun checkBluetoothPermissions(): Boolean =
+        getRequiredPermissions().all {
+            ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
+        }
+
+    private fun requestBluetoothPermissions(invoke: Invoke) {
+        ActivityCompat.requestPermissions(activity, getRequiredPermissions(), 1001)
         invoke.reject("Permissions required. Please grant Bluetooth and Location permissions and try again.")
     }
 }
